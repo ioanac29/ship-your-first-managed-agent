@@ -23,7 +23,18 @@ client = anthropic.Anthropic()
 #       unique per org — suffix it with uuid like setup_environment() does.
 @st.cache_resource
 def setup_agent() -> str:
-    raise NotImplementedError
+    skill = client.skills.create(
+        display_name=f"Incident Triage Runbook {uuid.uuid4().hex[:6]}",
+        files=files_from_dir("incident-triage-runbook"),
+    )
+    agent = client.beta.agents.create(
+        name="SRE Agent",
+        model="claude-opus-5-5",
+        system=SYSTEM,
+        tools=TOOLS,
+        skills=[{"type": "custom", "skill_id": skill.id, "version": "latest"}],
+    )
+    return agent.id
 
 
 # ── 2. Environment ────────────────────────────────────────────────────────
