@@ -42,7 +42,14 @@ def setup_agent() -> str:
 # Hint: client.beta.environments.create(name=..., config={"type": "cloud", ...})
 @st.cache_resource
 def setup_environment() -> str:
-    raise NotImplementedError
+    env = client.beta.environments.create(
+        name=f"sre-agent-{uuid.uuid4().hex[:6]}",
+        config={
+            "type": "cloud",
+            "networking": {"type": "limited", "allow_package_managers": True},
+        },
+    )
+    return env.id
 
 
 # ── 3. Upload the log ─────────────────────────────────────────────────────
