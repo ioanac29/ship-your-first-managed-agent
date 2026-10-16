@@ -111,7 +111,23 @@ def stream_reply(session_id: str, user_text: str):
 # When the cloud agent calls get_metrics / get_recent_deploys / get_diff,
 # answer from `metrics` / `deploys` / `diff` (already loaded from data/).
 def handle_tool(name: str, args: dict) -> str:
-    raise NotImplementedError
+    # Always return a string — an exception here would leave the agent waiting on a result forever.
+    if name == "get_metrics":
+        service, metric = args.get("service", ""), args.get("metric", "")
+        if service not in metrics:
+            return f"no service {service!r}; available: {', '.join(metrics)}"
+        if metric not in metrics[service]:
+            return f"no metric {metric!r} for {service}; available: {', '.join(metrics[service])}"
+        return json.dumps(metrics[service][metric])
+    if name == "get_recent_deploys":
+        return deploys
+    if name == "get_diff":
+        commit = args.get("commit", "").strip().lower()
+        full_sha = diff.split()[1]  # diff.txt starts with "commit <full sha>"
+        if len(commit) >= 7 and full_sha.startswith(commit):
+            return diff
+        return f"no diff for commit {commit!r}; only {full_sha[:7]} is available"
+    return f"unknown tool {name!r}"
 
 
 # ── 7. Delete session ─────────────────────────────────────────────────────
