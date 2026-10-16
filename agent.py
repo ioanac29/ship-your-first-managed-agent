@@ -79,7 +79,32 @@ def start_session(agent_id: str, env_id: str, log_file_id: str) -> str:
 # agent.custom_tool_use, call handle_tool() and post the result back.
 # Hint: with client.beta.sessions.events.stream(session_id) as s: ...events.send(...)
 def stream_reply(session_id: str, user_text: str):
-    raise NotImplementedError
+    # Open the stream first, then send — otherwise the first events can be missed.
+    with client.beta.sessions.events.stream(session_id) as stream:
+        client.beta.sessions.events.send(
+            session_id,
+            events=[{"type": "user.message", "content": [{"type": "text", "text": user_text}]}],
+        )
+        for ev in stream:
+            if ev.type == "agent.custom_tool_use":
+                result = handle_tool(ev.name, ev.input)
+                client.beta.sessions.events.send(
+                    session_id,
+                    events=[{
+                        "type": "user.custom_tool_result",
+                        "custom_tool_use_id": ev.id,
+                        "content": [{"type": "text", "text": result}],
+                    }],
+                )
+            yield ev
+            # requires_action means the agent is waiting on us (a tool result), so keep going.
+            # Any other idle reason (end_turn, budget_reached, ...) or termination ends the turn.
+            if ev.type == "session.status_terminated":
+                return
+            if ev.type == "session.status_idle" and ev.stop_reason.type != "requires_action":
+                if ev.stop_reason.type == "budget_reached":
+                    st.warning("This session hit its $2 budget cap — start a new session to keep going.")
+                return
 
 
 # ── 6. Local tool handlers ────────────────────────────────────────────────
