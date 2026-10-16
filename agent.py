@@ -5,6 +5,7 @@ The SRE Agent. Seven functions, each a single Managed Agents concept.
 Fill them in during the workshop. Everything else is in provided.py.
 """
 import json
+import time
 import uuid
 
 import anthropic
@@ -134,4 +135,11 @@ def handle_tool(name: str, args: dict) -> str:
 # Sessions are real cloud resources — clean them up.
 # Hint: client.beta.sessions.delete(session_id)
 def delete_session(session_id: str) -> None:
-    raise NotImplementedError
+    # A running session can't be deleted: interrupt it, then wait briefly for it to settle.
+    if client.beta.sessions.retrieve(session_id).status == "running":
+        client.beta.sessions.events.send(session_id, events=[{"type": "user.interrupt"}])
+    for _ in range(25):
+        if client.beta.sessions.retrieve(session_id).status != "running":
+            break
+        time.sleep(0.2)
+    client.beta.sessions.delete(session_id)
