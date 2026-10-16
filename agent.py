@@ -57,7 +57,8 @@ def setup_environment() -> str:
 # Hint: client.beta.files.upload(file=open(...))
 @st.cache_resource
 def upload_log() -> str:
-    raise NotImplementedError
+    with open(DATA / "app.log", "rb") as f:
+        return client.files.upload(file=f).id
 
 
 # ── 4. Session ────────────────────────────────────────────────────────────
