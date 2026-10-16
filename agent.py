@@ -65,7 +65,13 @@ def upload_log() -> str:
 # Bind agent + environment, mount the log under /mnt/session/uploads/.
 # Hint: client.beta.sessions.create(agent=agent_id, environment_id=..., resources=[...])
 def start_session(agent_id: str, env_id: str, log_file_id: str) -> str:
-    raise NotImplementedError
+    session = client.beta.sessions.create(
+        agent=agent_id,
+        environment_id=env_id,
+        resources=[{"type": "file", "file_id": log_file_id, "mount_path": "/app.log"}],
+        budget={"type": "limit", "max_list_cost": {"amount": "200", "currency": "USD"}},  # $2.00 cap
+    )
+    return session.id
 
 
 # ── 5. Stream loop ────────────────────────────────────────────────────────
